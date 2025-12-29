@@ -21,3 +21,7 @@
 /js/sw.js.map
 /uvan/stress/*.js
 /uvan/stress/*.js.map
+/uvan/pronunciation/*.js
+/uvan/pronunciation/*.js.map
+/uvan/pronunciation/audio/list.txt
+/uvan/pronunciation/audio/*/*.mp3

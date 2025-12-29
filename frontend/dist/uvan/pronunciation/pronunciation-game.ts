@@ -32,261 +32,229 @@ class Convert {
 		return result;
 	}
 }
+var convert = new Convert();
 
-class PronunciationGame {
-	convert = new Convert();
-	correctCount = 0;
-	totalCount = 0;
-	currentQuestion: any;
+var replacementSounds: Record<string, Array<string>> = {
+	"1": ["3", "a", "o", "u", "ù"], // aw
+	"2": ["4", "a", "e", "i", "ì"], // ay
+	"3": ["1", "e", "ä", "u", "ù"], // ew
+	"4": ["3", "e", "ä", "i", "ì"], // ey
+	"a": ["ä", "e", "o", "1", "2"],
+	"ä": ["a", "e", "ì"],
+	"e": ["ä", "ì", "i", "3", "4"],
+	"ì": ["e", "i"],
+	"i": ["ì", "e", "2"],
+	"u": ["a", "ù", "o", "1", "3"],
+	"ù": ["u", "o"],
+	"o": ["ä", "ì"],
+	"'": ["", "k", "p", "t"],
+	"f": ["v", "s"],
+	"h": ["", "'"],
+	"k": ["K", "'"],
+	"K": ["k"], // kx
+	"l": ["r"],
+	"L": ["R"], // ll
+	"m": ["n", "G"],
+	"n": ["G", "m"],
+	"G": ["n", "m"], // ng
+	"p": ["P", "'"],
+	"P": ["p"], // px
+	"r": ["l"],
+	"R": ["L"], // rr
+	"s": ["c", "z"],
+	"c": ["s", "z"], // ts
+	"t": ["T", "'"],
+	"T": ["t"], // tx
+	"v": ["f", "w"],
+	"w": ["v"],
+	"y": ["i"],
+	"z": ["s", "c"],
+};
 
-	replacementSounds: Record<string, Array<string>> = {
-		"1": ["a", "o", "u", "ù"], // aw
-		"2": ["a", "e", "i", "ì"], // ay
-		"3": ["e", "ä", "u", "ù"], // ew
-		"4": ["e", "ä", "i", "ì"], // ey
-		"a": ["ä", "e", "o"],
-		"ä": ["a", "e", "ì"],
-		"e": ["ä", "ì", "i"],
-		"ì": ["e", "i"],
-		"i": ["ì", "e"],
-		"u": ["a", "ù", "o"],
-		"ù": ["u", "o"],
-		"o": ["ä", "ì"],
-		"'": ["", "k", "p", "t"],
-		"f": ["v", "s"],
-		"h": ["", "'"],
-		"k": ["K", "'"],
-		"K": ["k"], // kx
-		"l": ["r"],
-		"L": ["R"], // ll
-		"m": ["n", "G"],
-		"n": ["G", "m"],
-		"G": ["n", "m"], // ng
-		"p": ["P", "'"],
-		"P": ["p"], // px
-		"r": ["l"],
-		"R": ["L"], // rr
-		"s": ["c", "z"],
-		"c": ["s", "z"], // ts
-		"t": ["T", "'"],
-		"T": ["t"], // tx
-		"v": ["f", "w"],
-		"w": ["v"],
-		"y": ["i"],
-		"z": ["s", "c"],
-	};
+var correctCount = 0;
+var totalCount = 0;
+var currentQuestion: any;
+var audioList: Array<string> = [];
 
-	constructor() {
-		this.setUpQuestionAudioToText();
-
-		$('html').on('keydown', function (e: JQuery.KeyDownEvent) {
-			const number = parseFloat(e.key);
-			if (isNaN(number)) {
-				return;
-			}
-			const $syllables = $('#syllables').children('.syllable');
-			if (number - 1 < 0 || number - 1 > $syllables.length) {
-				return;
-			}
-			$($syllables[number - 1]).trigger('click');
-		});
-
-		$('.score').on('click', function () {
-			const popout = $('.score-popout');
-			if (popout.is(':visible')) {
-				$('#overlay').removeClass('visible');
-				$('.score-popout').slideUp();
-			} else {
-				$('#overlay').addClass('visible');
-				$('.score-popout').slideDown();
-			}
-		});
+$('html').on('keydown', function (e: JQuery.KeyDownEvent) {
+	const number = parseFloat(e.key);
+	if (isNaN(number)) {
+		return;
 	}
-
-	fetchAndSetUp(): void {
-		const self = this;
-		$.getJSON('/api/random', { 'holpxay': 1 }).done(function (data) {
-			if (!data[0].hasOwnProperty('pronunciation') ||
-				data[0]['pronunciation'].length !== 1 ||
-				!(data[0]['pronunciation'][0]['syllables'].includes('-')) ||
-				data[0]['pronunciation'][0]['stressed'] === null ||
-				data[0]['type'] === 'n:si') {
-				self.fetchAndSetUp();
-				return;
-			}
-			self.currentQuestion = data[0];
-			self.setUpQuestionAudioToText();
-		});
+	const $syllables = $('#syllables').children('.syllable');
+	if (number - 1 < 0 || number - 1 > $syllables.length) {
+		return;
 	}
+	$($syllables[number - 1]).trigger('click');
+});
 
-	setUpQuestionAudioToText(): void {
-		const $wordAudio = $('#word-audio');
-		$wordAudio.empty();
+$('.score').on('click', function () {
+	const popout = $('.score-popout');
+	if (popout.is(':visible')) {
+		$('#overlay').removeClass('visible');
+		$('.score-popout').slideUp();
+	} else {
+		$('#overlay').addClass('visible');
+		$('.score-popout').slideDown();
+	}
+});
 
-		var audioPlayer = document.createElement('audio');
-		audioPlayer.controls = true;
-		audioPlayer.src = 'audio/\'rrta/nan.mp3';
+fetchAndSetUp();
 
-		$wordAudio.append($('<div/>').addClass('title').text("Select the text that matches the audio"));
-		$wordAudio.append(audioPlayer);
-
-		const $answersText = $('#answers-text');
-		$answersText.empty();
-
-		var answers = this.generateWrongAnswers("nan");
-		//const syllables = this.currentQuestion.pronunciation[0]['syllables'].split('-');
-		for (let i = 0; i < answers.length; i++) {
-			if (i > 0) {
-				$answersText.append(this.createSeparator());
-			}
-			const answer = this.convert.decompress(answers[i]);
-			$answersText.append(this.createAnswerTextBlock(answer, i, 0));
+async function fetchAndSetUp(): Promise<void> {
+    try {
+        const response = await fetch('audio/list.txt');
+        if (!response.ok) {
+            throw new Error('Failed to fetch list of audio files');
+        }
+        const fileData = await response.text();
+		const lines = fileData.split(/\r?\n/);
+		for (var line of lines) {
+			audioList.push(line);
 		}
-
-		audioPlayer.play();
-	}
-
-	generateWrongAnswers(correctAnswer: string): Array<string> {
-		const maxAnswers = 4;
-		const maxAttempts = 100;
-		var answers: Array<string> = [];
-		var base = this.convert.compress(correctAnswer);
-		answers.push(base);
-		for (let i = 0; i < maxAttempts; i++) {
-			var index = Math.floor((Math.random() * base.length));
-			var pre = base.substring(0, index);
-			var post = base.substring(index + 1);
-
-			var replacementSounds = this.replacementSounds[base.charAt(index)];
-			var randomSoundIndex = Math.floor((Math.random() * replacementSounds.length));
-			var replacedChar = replacementSounds[randomSoundIndex];
-			var modified = pre + replacedChar + post;
-
-			if (answers.includes(modified)) {
-				continue;
-			}
-			answers.push(modified);
-			if (answers.length >= maxAnswers) {
-				break;
-			}
-		}
-		return answers;
-	}
-
-	createAnswerTextBlock(text: string, i: number, correct: number): JQuery<HTMLElement> {
-		const $syllable = $('<div/>').addClass('answer');
-		if (i === correct) {
-			$syllable.addClass('correct');
-		} else {
-			$syllable.addClass('incorrect');
-		}
-		$('<div/>')
-			.addClass('navi')
-			.text(text)
-			.appendTo($syllable);
-		$('<div/>')
-			.addClass('index')
-			.text('' + i)
-			.appendTo($syllable);
-
-		const self = this;
-
-		$syllable.on('click', function () {
-			const $syllables = $('#answers');
-			$syllables.children('.answer').children('.index').html('&nbsp;');
-			const $correctSyllable = $($syllables.children('.answer')[correct - 1]);
-			$correctSyllable.children('.index').text('✓');
-			$syllable.addClass('chosen');
-			let timeout = 300;
-			if (i === correct) {
-				self.correctCount++;
-			} else {
-				$syllable.children('.index').text('✗');
-				$correctSyllable.addClass('correction');
-				timeout = 2000;
-
-				// add to mistakes list
-				let $mistake = $('<span/>').addClass('mistake');
-				const syllables = self.currentQuestion['pronunciation'][0]['syllables'].split('-');
-				for (let j = 0; j < syllables.length; j++) {
-					if (j > 0) {
-						$mistake.append('-');
-					}
-					if ((j + 1) === self.currentQuestion['pronunciation'][0]['stressed']) {
-						$mistake.append($('<span/>').addClass('mistake-correct').html(syllables[j]));
-					} else if ((j + 1) === i) {
-						$mistake.append($('<span/>').addClass('mistake-wrong').html(syllables[j]));
-					} else {
-						$mistake.append(syllables[j]);
-					}
-				}
-				let $mistakesList = $('#mistakes-list');
-				if ($mistakesList.html() === '(none yet!)') {
-					$mistakesList.empty();
-				}
-				$mistakesList.append($mistake);
-			}
-			self.totalCount++;
-			self.updateScore();
-
-			setTimeout(function () {
-				self.fetchAndSetUp();
-			}, timeout);
-		});
-		return $syllable;
-	}
-
-	createSeparator(): JQuery<HTMLElement> {
-		return $('<div/>').addClass('separator');
-	}
-
-	toReadableType(type: string): string {
-		const mapping: { [name: string]: string; } = {
-			"n": "n.",
-			"n:unc": "n.",
-			"n:si": "v.",
-			"n:pr": "prop. n.",
-			"pn": "pn.",
-			"adj": "adj.",
-			"num": "num.",
-			"adv": "adv.",
-			"adp": "adp.",
-			"adp:len": "adp+",
-			"intj": "intj.",
-			"part": "part.",
-			"conj": "conj.",
-			"ctr": "sbd.",
-			"v:?": "v.",
-			"v:in": "vin.",
-			"v:tr": "vtr.",
-			"v:m": "vm.",
-			"v:si": "v.",
-			"v:cp": "vcp.",
-			"phr": "phr.",
-			"inter": "inter.",
-			"aff:pre": "pref.",
-			"aff:pre:len": "pref.",
-			"aff:in": "inf.",
-			"aff:suf": "suf.",
-			"nv:si": "vin."
-		};
-		return mapping[type];
-	}
-
-	updateScore(): void {
-		const scoreString = this.correctCount + '/' + this.totalCount;
-		const $scoreField = $('#score-field');
-		$scoreField
-			.addClass('just-changed')
-			.text(scoreString);
-		setTimeout(function () {
-			$scoreField.removeClass('just-changed');
-			$scoreField.addClass('in-transition');
-		});
-		setTimeout(function () {
-			$scoreField.removeClass('in-transition');
-		}, 250);
-	}
+		setUpQuestionAudioToText();
+    } catch (error) {
+        console.error('Error fetching list of audio files:', error);
+    }
 }
 
-new PronunciationGame();
+function setUpQuestionAudioToText(): void {
+	const $wordAudio = $('#word-audio');
+	$wordAudio.empty();
+
+	var randomSoundIndex = Math.floor((Math.random() * audioList.length));
+	var filePath = audioList[randomSoundIndex];
+	var sound = filePath.substring(filePath.lastIndexOf('/')+1, filePath.lastIndexOf("."));
+
+	var audioPlayer = document.createElement('audio');
+	audioPlayer.controls = true;
+	audioPlayer.src = 'audio/' + filePath;
+
+	$wordAudio.append($('<div/>').addClass('title').text("Select the text that matches the audio"));
+	$wordAudio.append(audioPlayer);
+
+	const $answersText = $('#answers-text');
+	$answersText.empty();
+
+	var answers = generateWrongAnswers(sound);
+	//const syllables = this.currentQuestion.pronunciation[0]['syllables'].split('-');
+	for (let i = 0; i < answers.length; i++) {
+		if (i > 0) {
+			$answersText.append(createSeparator());
+		}
+		const answer = convert.decompress(answers[i]);
+		$answersText.append(createAnswerTextBlock(answer, i, 0));
+	}
+
+	audioPlayer.play();
+}
+
+function generateWrongAnswers(correctAnswer: string): Array<string> {
+	const maxAnswers = 4;
+	const maxAttempts = 100;
+	var answers: Array<string> = [];
+	var base = convert.compress(correctAnswer);
+	answers.push(base);
+	for (let i = 0; i < maxAttempts; i++) {
+		var index = Math.floor((Math.random() * base.length));
+		var pre = base.substring(0, index);
+		var post = base.substring(index + 1);
+
+		var soundToReplace = base.charAt(index);
+
+		var possibleReplacements: Array<string> = replacementSounds[soundToReplace];
+		var randomReplacementIndex = Math.floor((Math.random() * possibleReplacements.length));
+		var replacedSound = possibleReplacements[randomReplacementIndex];
+
+		var modified = pre + replacedSound + post;
+
+		if (answers.includes(modified)) {
+			continue;
+		}
+		answers.push(modified);
+		if (answers.length >= maxAnswers) {
+			break;
+		}
+	}
+	return answers;
+}
+
+function createAnswerTextBlock(text: string, i: number, correct: number): JQuery<HTMLElement> {
+	const $syllable = $('<div/>').addClass('answer');
+	if (i === correct) {
+		$syllable.addClass('correct');
+	} else {
+		$syllable.addClass('incorrect');
+	}
+	$('<div/>')
+		.addClass('navi')
+		.text(text)
+		.appendTo($syllable);
+	$('<div/>')
+		.addClass('index')
+		.text('' + i)
+		.appendTo($syllable);
+
+	$syllable.on('click', function () {
+		const $syllables = $('#answers');
+		$syllables.children('.answer').children('.index').html('&nbsp;');
+		const $correctSyllable = $($syllables.children('.answer')[correct - 1]);
+		$correctSyllable.children('.index').text('✓');
+		$syllable.addClass('chosen');
+		let timeout = 300;
+		if (i === correct) {
+			correctCount++;
+		} else {
+			$syllable.children('.index').text('✗');
+			$correctSyllable.addClass('correction');
+			timeout = 2000;
+
+			// add to mistakes list
+			let $mistake = $('<span/>').addClass('mistake');
+			const syllables = currentQuestion['pronunciation'][0]['syllables'].split('-');
+			for (let j = 0; j < syllables.length; j++) {
+				if (j > 0) {
+					$mistake.append('-');
+				}
+				if ((j + 1) === currentQuestion['pronunciation'][0]['stressed']) {
+					$mistake.append($('<span/>').addClass('mistake-correct').html(syllables[j]));
+				} else if ((j + 1) === i) {
+					$mistake.append($('<span/>').addClass('mistake-wrong').html(syllables[j]));
+				} else {
+					$mistake.append(syllables[j]);
+				}
+			}
+			let $mistakesList = $('#mistakes-list');
+			if ($mistakesList.html() === '(none yet!)') {
+				$mistakesList.empty();
+			}
+			$mistakesList.append($mistake);
+		}
+		totalCount++;
+		updateScore();
+
+		setTimeout(function () {
+			fetchAndSetUp();
+		}, timeout);
+	});
+	return $syllable;
+}
+
+function createSeparator(): JQuery<HTMLElement> {
+	return $('<div/>').addClass('separator');
+}
+
+function updateScore(): void {
+	const scoreString = correctCount + '/' + totalCount;
+	const $scoreField = $('#score-field');
+	$scoreField
+		.addClass('just-changed')
+		.text(scoreString);
+	setTimeout(function () {
+		$scoreField.removeClass('just-changed');
+		$scoreField.addClass('in-transition');
+	});
+	setTimeout(function () {
+		$scoreField.removeClass('in-transition');
+	}, 250);
+}
