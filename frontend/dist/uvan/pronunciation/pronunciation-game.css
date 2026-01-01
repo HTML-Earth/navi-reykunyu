@@ -91,17 +91,22 @@ body {
 	font-style: italic;
 }
 
-#answers {
+#answers-text {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 	padding: 20px;
 }
 
 .answer, .separator {
-	display: inline-block;
-	vertical-align: top;
-	padding: 15px;
+	padding: 10px;
 }
 
 .answer {
+	width: 200px;
+	height: 50px;
+	line-height: 50px;
 	background-color: rgba(255, 255, 255, 0.25);
 	transition: background-color 0.1s, border 0.1s, box-shadow 0.1s;
 	border-radius: 10px;

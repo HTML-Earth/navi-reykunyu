@@ -71,6 +71,16 @@ var replacementSounds: Record<string, Array<string>> = {
 	"z": ["s", "c"],
 };
 
+//TODO:
+// save mistakes
+// start game + options
+// - distinguish ù
+// - vowels/consonants only
+// - include reef consonants
+// more speakers
+// text to audio
+
+const maxAnswers = 4;
 var correctCount = 0;
 var totalCount = 0;
 var currentQuestion: any;
@@ -136,31 +146,32 @@ function setUpQuestionAudioToText(): void {
 	const $answersText = $('#answers-text');
 	$answersText.empty();
 
-	var answers = generateWrongAnswers(sound);
+	var base = convert.compress(sound);
+	var answers = generateWrongAnswers(base, maxAnswers - 1);
+	var randomCorrectIndex = Math.floor((Math.random() * answers.length));
+	answers.splice(randomCorrectIndex, 0, base);
+
 	//const syllables = this.currentQuestion.pronunciation[0]['syllables'].split('-');
 	for (let i = 0; i < answers.length; i++) {
 		if (i > 0) {
 			$answersText.append(createSeparator());
 		}
 		const answer = convert.decompress(answers[i]);
-		$answersText.append(createAnswerTextBlock(answer, i, 0));
+		$answersText.append(createAnswerTextBlock(answer, i, randomCorrectIndex));
 	}
 
 	audioPlayer.play();
 }
 
-function generateWrongAnswers(correctAnswer: string): Array<string> {
-	const maxAnswers = 4;
+function generateWrongAnswers(correctAnswer: string, maxAnswers: number): Array<string> {
 	const maxAttempts = 100;
 	var answers: Array<string> = [];
-	var base = convert.compress(correctAnswer);
-	answers.push(base);
 	for (let i = 0; i < maxAttempts; i++) {
-		var index = Math.floor((Math.random() * base.length));
-		var pre = base.substring(0, index);
-		var post = base.substring(index + 1);
+		var index = Math.floor((Math.random() * correctAnswer.length));
+		var pre = correctAnswer.substring(0, index);
+		var post = correctAnswer.substring(index + 1);
 
-		var soundToReplace = base.charAt(index);
+		var soundToReplace = correctAnswer.charAt(index);
 
 		var possibleReplacements: Array<string> = replacementSounds[soundToReplace];
 		var randomReplacementIndex = Math.floor((Math.random() * possibleReplacements.length));
@@ -186,13 +197,13 @@ function createAnswerTextBlock(text: string, i: number, correct: number): JQuery
 	} else {
 		$syllable.addClass('incorrect');
 	}
+	// $('<div/>')
+	// 	.addClass('index')
+	// 	.text('' + i)
+	// 	.appendTo($syllable);
 	$('<div/>')
 		.addClass('navi')
 		.text(text)
-		.appendTo($syllable);
-	$('<div/>')
-		.addClass('index')
-		.text('' + i)
 		.appendTo($syllable);
 
 	$syllable.on('click', function () {
@@ -210,25 +221,25 @@ function createAnswerTextBlock(text: string, i: number, correct: number): JQuery
 			timeout = 2000;
 
 			// add to mistakes list
-			let $mistake = $('<span/>').addClass('mistake');
-			const syllables = currentQuestion['pronunciation'][0]['syllables'].split('-');
-			for (let j = 0; j < syllables.length; j++) {
-				if (j > 0) {
-					$mistake.append('-');
-				}
-				if ((j + 1) === currentQuestion['pronunciation'][0]['stressed']) {
-					$mistake.append($('<span/>').addClass('mistake-correct').html(syllables[j]));
-				} else if ((j + 1) === i) {
-					$mistake.append($('<span/>').addClass('mistake-wrong').html(syllables[j]));
-				} else {
-					$mistake.append(syllables[j]);
-				}
-			}
-			let $mistakesList = $('#mistakes-list');
-			if ($mistakesList.html() === '(none yet!)') {
-				$mistakesList.empty();
-			}
-			$mistakesList.append($mistake);
+			// let $mistake = $('<span/>').addClass('mistake');
+			// const syllables = currentQuestion['pronunciation'][0]['syllables'].split('-');
+			// for (let j = 0; j < syllables.length; j++) {
+			// 	if (j > 0) {
+			// 		$mistake.append('-');
+			// 	}
+			// 	if ((j + 1) === currentQuestion['pronunciation'][0]['stressed']) {
+			// 		$mistake.append($('<span/>').addClass('mistake-correct').html(syllables[j]));
+			// 	} else if ((j + 1) === i) {
+			// 		$mistake.append($('<span/>').addClass('mistake-wrong').html(syllables[j]));
+			// 	} else {
+			// 		$mistake.append(syllables[j]);
+			// 	}
+			// }
+			// let $mistakesList = $('#mistakes-list');
+			// if ($mistakesList.html() === '(none yet!)') {
+			// 	$mistakesList.empty();
+			// }
+			// $mistakesList.append($mistake);
 		}
 		totalCount++;
 		updateScore();
