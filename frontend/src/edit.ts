@@ -54,7 +54,9 @@ abstract class EditField<T> {
 		return this.$addButton;
 	}
 
-	private setNumberOfRows(count: number) {
+	// This is protected instead of private only because of updateFromJSON() in TranslatedMultiStringChoiceField
+	// I couldn't figure out a better way of forcing the row to appear even when the JSON is empty
+	protected setNumberOfRows(count: number) {
 		if (count == this.$rows.length) {
 			return;
 		}
@@ -231,29 +233,31 @@ class TranslatedMultiStringChoiceField extends EditField<string | Translated<str
 		this.choices = choices;
 	}
 
-	storeOnlyEnglishAsString = false;
-	multiLine = false;
-
-	setStoreOnlyEnglishAsString(storeOnlyEnglishAsString: boolean) {
-		this.storeOnlyEnglishAsString = storeOnlyEnglishAsString;
-	}
-
-	setMultiLine(multiLine: boolean) {
-		this.multiLine = multiLine;
-	}
+	perLanguageCount: Array<{language: string, count: number}> | undefined = undefined;
 
 	renderInput(): JQuery {
-		let $input = $(this.multiLine ? '<textarea/>' : '<input/>')
+		let $input = $('<input/>')
 			.attr('id', this.attributeName + '-field')
 			.on('input', this.callOnChanged.bind(this));
-		let $output = $('<span/>')
-			.attr('id', this.attributeName + '-field');
+
 		let $inputField = $('<div/>')
-			.addClass('ui action input')
-			.append($output);
-		if (this.multiLine) {
-			$inputField.find('textarea').attr('rows', 4);
+			.addClass('ui action input');
+		
+		if (this.perLanguageCount !== undefined) {
+			let displayedCount = '';
+			for (let i = 0; i < this.perLanguageCount.length; i++) {
+				displayedCount = displayedCount + this.perLanguageCount[i].language + ': ' + this.perLanguageCount[i].count;
+				if (i < this.perLanguageCount.length-1) {
+					displayedCount = displayedCount + ', ';
+				}
+			}
+			let $output = $('<span/>')
+				.attr('id', this.attributeName + '-field')
+				.addClass('ui large label')
+				.html(displayedCount)
+				.appendTo($inputField);
 		}
+
 		let $button = $('<div/>')
 			.addClass('ui basic icon button')
 			.html('Edit <i class="pencil alternate icon"></i>')
@@ -269,21 +273,40 @@ class TranslatedMultiStringChoiceField extends EditField<string | Translated<str
 			$('#confusables-modal-ok-button').off('click');
 			$('#confusables-modal-ok-button').on('click', () => {
 				$input.val($('#confusables-en-field').val()!);
-				$('#confusables-modal input').each(function() {
-					let id = $(this).attr('id')!;
-					let lang = id.split('-')[1];
-					let value = $(this).val() as string;
-					if (value.length) {
-						$input.data()[lang] = value;
-					} else {
-						$input.removeData(lang);
-					}
-				});
+				// $('#confusables-modal input').each(function() {
+				// 	let id = $(this).attr('id')!;
+				// 	let lang = id.split('-')[1];
+				// 	let value = $(this).val() as string;
+				// 	if (value.length) {
+				// 		$input.data()[lang] = value;
+				// 	} else {
+				// 		$input.removeData(lang);
+				// 	}
+				// });
 				this.callOnChanged();
 			});
 		});
 		return $inputField;
 	}
+
+	updateFromJSON(word: any): void {
+		let value = word[this.attributeName];
+		if (value === undefined) {
+			this.perLanguageCount = undefined;
+			this.setNumberOfRows(1);
+		} else {
+			this.perLanguageCount = [];
+			for (let lang of Object.keys(value)) {
+				let count = 0;
+				for (let entry of value[lang]) {
+					count++;
+				}
+				this.perLanguageCount.push({language: lang, count: count});
+			}
+			this.setNumberOfRows(1);
+		}
+	}
+
 	inputToValue($row: JQuery): string | Translated<string> {
 		const $input = $row.find('input, textarea');
 		let translation: Translated<string> = {
@@ -293,12 +316,9 @@ class TranslatedMultiStringChoiceField extends EditField<string | Translated<str
 		for (let lang of Object.keys(languages)) {
 			translation[lang] = languages[lang];
 		}
-		if (this.storeOnlyEnglishAsString && Object.keys(translation).length === 1) {
-			return translation['en'];
-		} else {
-			return translation;
-		}
+		return translation;
 	}
+
 	inputFromValue($row: JQuery, value: string | Translated<string>): void {
 		const $input = $row.find('input, textarea');
 		$input.removeData();
@@ -540,6 +560,11 @@ class EditPage {
 		meaningNoteField.setStoreOnlyEnglishAsString(true);
 		meaningNoteField.setMultiLine(true);
 
+		let confusablesField = new TranslatedMultiStringChoiceField('confusables', 'Confusable words', {
+			'synonym': 'Synonym', 'wrong-type': 'Wrong type', 'wrong-direction': 'Wrong direction', 'wrong-form': 'Wrong form'
+		});
+		confusablesField.setInfoText('List of words that this word could be confused for. Used in the study tool. If the user answers with an alternative in this list, the answer isn\'t marked incorrect, but instead they get the chance to try again.');
+
 		let conjugationNoteField = new TranslatedStringEditField('conjugation_note', 'Conjugation note');
 		conjugationNoteField.setInfoText('In case this word has conjugation exceptions ' +
 			'(e.g., missing or alternate forms), they can be noted here.');
@@ -583,20 +608,14 @@ class EditPage {
 		statusNoteField.setInfoText('Optional note about the status of this word.');
 		statusNoteField.setMinCount(0);
 
-		let confusablesField = new TranslatedMultiStringChoiceField('confusables', 'Confusable words', {
-			'synonym': 'Synonym', 'wrong-type': 'Wrong type', 'wrong-direction': 'Wrong direction', 'wrong-form': 'Wrong form'
-		});
-		confusablesField.setInfoText('List of words that this word could be confused for. Used in the study tool. If the user answers with an alternative in this list, the answer isn\'t marked incorrect, but instead they get the chance to try again.');
-		confusablesField.setMaxCount(Infinity);
-
 		let todoField = new StringEditField('todo', 'To do');
 		todoField.setInfoText('Comments about how this word definition should be improved. ' +
 			'These aren\'t shown to “normal” users (only to administrators).');
 		todoField.setMinCount(0);
 
-		this.fields = [rootField, typeField, infixField, definitionField,
-			shortTranslationField, meaningNoteField, conjugationNoteField, etymologyField,
-			imageField, sourceField, seeAlsoField, statusField, statusNoteField, confusablesField, todoField];
+		this.fields = [rootField, typeField, infixField, definitionField, shortTranslationField,
+			meaningNoteField, confusablesField, conjugationNoteField, etymologyField, imageField,
+			sourceField, seeAlsoField, statusField, statusNoteField, todoField];
 		this.jsonToFields();
 		this.updateFieldLimits(infixField, statusNoteField);
 		for (let field of this.fields) {

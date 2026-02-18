@@ -126,6 +126,11 @@
 							</select>
 							<input style="display:inline; width:40%" type="text"></input>
 						</div>
+						<div class="item ui basic compact button"><i class="ui plus icon"></i> Confusable word</div>
+					</div>
+					<% for (let lang of languages) { %>
+					<div class="item eight wide column">
+						<div><%= lang[0] %></div>
 						<div class="row compact">
 							<div style="display:inline" class="ui basic compact button delete-button"><i class="remove icon"></i></div>
 							<select style="display:inline; width:40%" >
@@ -136,11 +141,6 @@
 							</select>
 							<input style="display:inline; width:40%" type="text"></input>
 						</div>
-						<div class="item ui basic compact button"><i class="ui plus icon"></i> Confusable word</div>
-					</div>
-					<% for (let lang of languages) { %>
-					<div class="item eight wide column">
-						<div><%= lang[0] %></div>
 						<div class="item ui basic compact button"><i class="ui plus icon"></i> Confusable word</div>
 					</div>
 					<% } %>
