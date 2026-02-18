@@ -46,7 +46,8 @@ declare type WordData = {
 	todo?: string,
 	favorite?: boolean,
 	sentences?: Sentence[],
-	references?: Record<string, WordData>
+	references?: Record<string, WordData>,
+	confusables?: Translated<Confusable[]>
 };
 
 declare type Dialect = 'FN' | 'combined' | 'RN';
@@ -182,6 +183,11 @@ declare type LearnableItem = {
 	vocab: WordData,
 	comment?: string
 }
+
+/// List of confusables for each word. If the user answers with an alternative
+/// in this list, the answer isn't marked incorrect, but instead they get the
+/// chance to try again.
+type Confusable = string | [string, 'synonym' | 'wrong-type' | 'wrong-direction' | 'wrong-form'];
 
 // autocomplete suggestions (format prescribed by Semantic UI)
 declare type Suggestion = { 'title': string, 'description'?: string };

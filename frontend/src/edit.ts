@@ -223,6 +223,98 @@ class StringEditField extends EditField<string> {
 	}
 }
 
+class TranslatedMultiStringChoiceField extends EditField<string | Translated<string>> {
+	choices: Record<string, string>;
+
+	constructor(attributeName: string, label: string, choices: Record<string, string>) {
+		super(attributeName, label);
+		this.choices = choices;
+	}
+
+	storeOnlyEnglishAsString = false;
+	multiLine = false;
+
+	setStoreOnlyEnglishAsString(storeOnlyEnglishAsString: boolean) {
+		this.storeOnlyEnglishAsString = storeOnlyEnglishAsString;
+	}
+
+	setMultiLine(multiLine: boolean) {
+		this.multiLine = multiLine;
+	}
+
+	renderInput(): JQuery {
+		let $input = $(this.multiLine ? '<textarea/>' : '<input/>')
+			.attr('id', this.attributeName + '-field')
+			.on('input', this.callOnChanged.bind(this));
+		let $output = $('<span/>')
+			.attr('id', this.attributeName + '-field');
+		let $inputField = $('<div/>')
+			.addClass('ui action input')
+			.append($output);
+		if (this.multiLine) {
+			$inputField.find('textarea').attr('rows', 4);
+		}
+		let $button = $('<div/>')
+			.addClass('ui basic icon button')
+			.html('Edit <i class="pencil alternate icon"></i>')
+			.appendTo($inputField);
+		$button.on('click', () => {
+			$('#confusables-modal input').val('');
+			$('#confusables-en-field').val($input.val()!);
+			let languages = $input.data();
+			for (let lang of Object.keys(languages)) {
+				$('#confusables-' + lang + '-field').val(languages[lang]);
+			}
+			$('#confusables-modal').modal('show');
+			$('#confusables-modal-ok-button').off('click');
+			$('#confusables-modal-ok-button').on('click', () => {
+				$input.val($('#confusables-en-field').val()!);
+				$('#confusables-modal input').each(function() {
+					let id = $(this).attr('id')!;
+					let lang = id.split('-')[1];
+					let value = $(this).val() as string;
+					if (value.length) {
+						$input.data()[lang] = value;
+					} else {
+						$input.removeData(lang);
+					}
+				});
+				this.callOnChanged();
+			});
+		});
+		return $inputField;
+	}
+	inputToValue($row: JQuery): string | Translated<string> {
+		const $input = $row.find('input, textarea');
+		let translation: Translated<string> = {
+			'en': $input.val() as string
+		};
+		const languages = $input.data();
+		for (let lang of Object.keys(languages)) {
+			translation[lang] = languages[lang];
+		}
+		if (this.storeOnlyEnglishAsString && Object.keys(translation).length === 1) {
+			return translation['en'];
+		} else {
+			return translation;
+		}
+	}
+	inputFromValue($row: JQuery, value: string | Translated<string>): void {
+		const $input = $row.find('input, textarea');
+		$input.removeData();
+		if (typeof value === 'string') {
+			$input.val(value);
+		} else {
+			$input.val(value['en']);
+			for (let lang of Object.keys(value)) {
+				if (lang !== 'en') {
+					$input.data(lang, value[lang]);
+				}
+			}
+		}
+	}
+}
+
 class TranslatedStringEditField extends EditField<string | Translated<string>> {
 	storeOnlyEnglishAsString = false;
 	multiLine = false;
@@ -491,6 +583,12 @@ class EditPage {
 		statusNoteField.setInfoText('Optional note about the status of this word.');
 		statusNoteField.setMinCount(0);
 
+		let confusablesField = new TranslatedMultiStringChoiceField('confusables', 'Confusable words', {
+			'synonym': 'Synonym', 'wrong-type': 'Wrong type', 'wrong-direction': 'Wrong direction', 'wrong-form': 'Wrong form'
+		});
+		confusablesField.setInfoText('List of words that this word could be confused for. Used in the study tool. If the user answers with an alternative in this list, the answer isn\'t marked incorrect, but instead they get the chance to try again.');
+		confusablesField.setMaxCount(Infinity);
+
 		let todoField = new StringEditField('todo', 'To do');
 		todoField.setInfoText('Comments about how this word definition should be improved. ' +
 			'These aren\'t shown to “normal” users (only to administrators).');
@@ -498,7 +596,7 @@ class EditPage {
 
 		this.fields = [rootField, typeField, infixField, definitionField,
 			shortTranslationField, meaningNoteField, conjugationNoteField, etymologyField,
-			imageField, sourceField, seeAlsoField, statusField, statusNoteField, todoField];
+			imageField, sourceField, seeAlsoField, statusField, statusNoteField, confusablesField, todoField];
 		this.jsonToFields();
 		this.updateFieldLimits(infixField, statusNoteField);
 		for (let field of this.fields) {

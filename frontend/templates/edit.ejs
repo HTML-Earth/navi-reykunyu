@@ -110,6 +110,52 @@
 			</div>
 		</div>
 
+		<div id="confusables-modal" class="ui modal">
+			<div class="header">Edit confusable words</div>
+			<div class="scrolling content">
+				<div class="ui form relaxed grid">
+					<div class="item eight wide column">
+						<div>English</div>
+						<div class="row compact">
+							<div style="display:inline" class="ui basic compact button delete-button"><i class="remove icon"></i></div>
+							<select style="display:inline; width:40%" >
+								<option value="synonym">Synonym</option>
+								<option value="wrong-type">Wrong type</option>
+								<option value="wrong-direction">Wrong direction</option>
+								<option value="wrong-form">Wrong form</option>
+							</select>
+							<input style="display:inline; width:40%" type="text"></input>
+						</div>
+						<div class="row compact">
+							<div style="display:inline" class="ui basic compact button delete-button"><i class="remove icon"></i></div>
+							<select style="display:inline; width:40%" >
+								<option value="synonym">Synonym</option>
+								<option value="wrong-type">Wrong type</option>
+								<option value="wrong-direction">Wrong direction</option>
+								<option value="wrong-form">Wrong form</option>
+							</select>
+							<input style="display:inline; width:40%" type="text"></input>
+						</div>
+						<div class="item ui basic compact button"><i class="ui plus icon"></i> Confusable word</div>
+					</div>
+					<% for (let lang of languages) { %>
+					<div class="item eight wide column">
+						<div><%= lang[0] %></div>
+						<div class="item ui basic compact button"><i class="ui plus icon"></i> Confusable word</div>
+					</div>
+					<% } %>
+				</div>
+			</div>
+			<div class="actions">
+				<div id="confusables-modal-cancel-button" class="ui basic button">
+					<i class="close icon"></i> Cancel
+				</div>
+				<div id="confusables-modal-ok-button" class="ui primary approve button">
+					<i class="checkmark icon"></i> OK
+				</div>
+			</div>
+		</div>
+
 		<div id="source-modal" class="ui modal">
 			<div class="header">Edit source</div>
 			<div class="scrolling content">
