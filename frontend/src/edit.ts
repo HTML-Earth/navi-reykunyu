@@ -263,12 +263,6 @@ class TranslatedMultiStringChoiceField extends EditField<string | Translated<str
 			.html('Edit <i class="pencil alternate icon"></i>')
 			.appendTo($inputField);
 		$button.on('click', () => {
-			$('#confusables-modal input').val('');
-			$('#confusables-en-field').val($input.val()!);
-			let languages = $input.data();
-			for (let lang of Object.keys(languages)) {
-				$('#confusables-' + lang + '-field').val(languages[lang]);
-			}
 			$('#confusables-modal').modal('show');
 			$('#confusables-modal-ok-button').off('click');
 			$('#confusables-modal-ok-button').on('click', () => {
@@ -298,8 +292,35 @@ class TranslatedMultiStringChoiceField extends EditField<string | Translated<str
 			this.perLanguageCount = [];
 			for (let lang of Object.keys(value)) {
 				let count = 0;
+				$('#confusables-' + lang + '-rows').empty();
 				for (let entry of value[lang]) {
 					count++;
+
+					let $removeButton = $('<div/>')
+					.css({'display': 'inline'})
+					.addClass('ui basic compact button delete-button')
+					.html('<i class="remove icon"></i>');
+
+					let $typeDropDown = $('<select/>')
+					.css({'display': 'inline', 'width': '40%'});
+					for (const [value, displayName] of Object.entries(this.choices)) {
+						let $option = $('<option value="' + value + '">' + displayName + '</option>');
+						$typeDropDown.append($option);
+					}
+					$typeDropDown.val(entry.type);
+					
+					let $wordField = $('<input/>')
+					.css({'display': 'inline', 'width': '40%'})
+					.attr('type', 'text');
+					$wordField.val(entry.word);
+
+					let $newRow = $('<div/>')
+					.addClass('row compact');
+					$newRow.append($removeButton);
+					$newRow.append($typeDropDown);
+					$newRow.append($wordField);
+
+					$('#confusables-' + lang + '-rows').append($newRow);
 				}
 				this.perLanguageCount.push({language: lang, count: count});
 			}
@@ -624,7 +645,7 @@ class EditPage {
 		this.fields = [rootField, typeField, infixField, definitionField,
 			shortTranslationField, meaningNoteField, conjugationNoteField, etymologyField,
 			imageField, sourceField, seeAlsoField, statusField, statusNoteField,
-			disambiguationHintField, todoField];
+			disambiguationHintField, confusablesField, todoField];
 		this.jsonToFields();
 		this.updateFieldLimits(infixField, statusNoteField);
 		for (let field of this.fields) {

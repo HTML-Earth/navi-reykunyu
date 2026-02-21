@@ -43,12 +43,12 @@ declare type WordData = {
 	etymology?: LinkString,
 	derived?: WordData[],
 	disambiguation_hint?: Translated<string>,
+	confusables?: Translated<Confusable[]>,
 	seeAlso?: WordData[],
 	todo?: string,
 	favorite?: boolean,
 	sentences?: Sentence[],
-	references?: Record<string, WordData>,
-	confusables?: Translated<Confusable[]>
+	references?: Record<string, WordData>
 };
 
 declare type Dialect = 'FN' | 'combined' | 'RN';
